@@ -54,7 +54,7 @@ predicted_BHI$bird_health_max <- predict_BHI$fit + predict_BHI$se.fit
 
 4. **Absence de validation croisée** : Pas de validation sur données indépendantes pour évaluer la capacité prédictive réelle du modèle.
 
-5. **Variable road_density exclue** : La variable `road_density` n'apparaît pas dans les modèles testés sans justification. Cette exclusion pourrait biaiser les résultats.
+5. **Variable road_density exclue** : La variable `road_density` n'apparaît pas dans les modèles testés sans justification. Cette exclusion est préoccupante car la densité routière est un indicateur clé du stress urbain pour les oiseaux, affectant la pollution sonore, la qualité de l'air, et le risque de collision (Kight & Swaddle, 2011). Son omission pourrait biaiser les estimations des autres coefficients.
 
 ### Considérations sur glmmTMB
 
@@ -111,6 +111,7 @@ Le choix final de `BHI_m1a` exclut `thrash_can_count` et `road_density` sans jus
 
 - Brooks, M. E., et al. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. *The R Journal*, 9(2), 378-400.
 - Hartig, F. (2022). DHARMa: Residual Diagnostics for Hierarchical (Multi-Level/Mixed) Regression Models. R package version 0.4.6.
+- Kight, C. R., & Swaddle, J. P. (2011). How and why environmental noise impacts animals: an integrative, mechanistic review. *Ecology Letters*, 14(10), 1052-1061.
 - Legendre, P., & Legendre, L. (2012). *Numerical Ecology* (3rd ed.). Elsevier.
 - Zuur, A. F., et al. (2009). *Mixed Effects Models and Extensions in Ecology with R*. Springer.
 
