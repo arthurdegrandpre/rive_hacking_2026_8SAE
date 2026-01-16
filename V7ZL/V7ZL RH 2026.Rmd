@@ -1,0 +1,212 @@
+---
+title: "Rive Hacking 2026"
+author: "ChatGPT generated"
+date: "2026-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r Libraries}
+library(tidyverse)
+library(ggcorrplot)
+library(GGally)
+library(corrplot)
+library(glmmTMB)
+library(DHARMa)
+library(patchwork)
+```
+
+# Import and data traitment
+```{r Import data}
+dataset <- read_csv("dataset.csv")
+dataset_sansNA <- na.omit(dataset)
+
+dataset_PCA <- dataset_sansNA %>%
+  select(where(is.numeric)) %>%  # Retain only numeric columns for PCA
+  mutate(across(everything(), ~ as.numeric(scale(.)))) # Normalize
+to_predict <- read_csv("to_predict.csv")
+```
+
+# Correlations
+
+```{r corplot}
+my_fn <- function(data, mapping, method="spearman", use="pairwise", ...){
+              x <- eval_data_col(data, mapping$x)
+              y <- eval_data_col(data, mapping$y)
+              
+              corr <- cor(x, y, method=method, use=use)
+
+
+              colFn <- colorRampPalette(c("indianred2", "white", "steelblue2"), interpolate ='spline')
+              fill <- colFn(100)[findInterval(corr, seq(-1, 1, length=100))]
+
+              ggally_cor(data = data, mapping = mapping, color = "black", size = 1.8, ...) + 
+                theme_void() +
+                theme(panel.background = element_rect(fill=fill))
+} 
+
+corplot <- ggpairs(dataset_PCA,
+        lower = list(continuous = wrap("smooth", alpha = 0.3, size = 0.2, color = "darkslateblue")),
+        upper = list(continuous = my_fn), progress = F ) +
+  theme(axis.text = element_text(size = 5),
+        axis.text.x = element_text(angle = 45),
+        strip.text.x = element_text(size = 6),
+        strip.text.y = element_text(size = 3.5))
+corplot
+
+ggsave("C:/Users/coren/OneDrive/Documents/Holopedium/Rive Hacking 2026/Bird_Cor_Plot.pdf", plot = corplot, width = 8, height = 6, onefile = F)
+
+corrplot(cor(dataset_PCA), method = 'square')
+```
+# Descriptive plots
+```{r plots descriptive}
+dataset$park_id <-as.factor(dataset$park_id)
+
+shrubplot <- ggplot(dataset, aes(x = shrub_density, y = bird_health_index, color = park_id)) +
+  geom_point(alpha = 0.6) +
+  theme_classic() +
+  labs(title = "BHI in function of shrubs",
+       color = "Park")
+
+print(shrubplot)
+
+feederplot <- ggplot(dataset, aes(x = feeder_count, y = bird_health_index, color = park_id)) +
+  geom_point(alpha = 0.6) +
+  theme_classic() +
+  labs(title = "BHI in function of feeders",
+       color = "Park")
+
+print(feederplot)
+
+trashplot <- ggplot(dataset, aes(x = thrash_can_count, y = bird_health_index, color = park_id)) +
+  geom_point(alpha = 0.6) +
+  theme_classic() +
+  labs(title = "BHI in function of trash cans",
+       color = "Lake")
+
+print(trashplot)
+
+rapplot <- ggplot(dataset, aes(x = raptor_presence, y = bird_health_index, color = park_id)) +
+  geom_point(alpha = 0.6) +
+  theme_classic() +
+  labs(title = "BHI in function of raptors",
+       color = "Park")
+
+print(rapplot)
+
+
+shrubplot+feederplot+rapplot+ plot_layout(widths = c(5,5,5), height = c(5,5,5))
+```
+
+# Models
+```{r models parks}
+BHI_m1a <- glmmTMB(bird_health_index ~ shrub_density +
+                             feeder_count + raptor_presence + (1|park_id),
+                          family = gaussian, data=dataset)
+
+summary(BHI_m1a)
+
+BHI_m1a2 <- glmmTMB(bird_health_index ~ shrub_density + thrash_can_count +
+                             feeder_count + raptor_presence + (1|park_id),
+                          family = gaussian, data=dataset)
+
+summary(BHI_m1a2)
+
+BHI_m1b <- glmmTMB(bird_health_index ~ shrub_density +
+                             feeder_count + (1|park_id),
+                          family = gaussian, data=dataset)
+
+summary(BHI_m1b)
+
+BHI_m1c <- glmmTMB(bird_health_index ~ shrub_density + raptor_presence + (1|park_id),
+                          family = gaussian, data=dataset)
+
+summary(BHI_m1c)
+```
+
+```{r model city}
+BHI_m2 <- glmmTMB(bird_health_index ~ shrub_density +
+                             feeder_count + raptor_presence + (1|city_id),
+                          family = gaussian, data=dataset)
+
+summary(BHI_m2)
+```
+
+## Selected model diagnostic
+```{r diagnostic with Dharma}
+simOutput <- simulateResiduals(fittedModel = BHI_m1a, plot = F)
+
+plot(simOutput)
+```
+
+# Predictions
+```{r predict}
+predict_BHI <- predict(BHI_m1a,
+                        newdata = to_predict,
+                        type="response", se.fit = T)
+predicted_BHI <- to_predict
+predicted_BHI$bird_health_index <- predict_BHI$fit
+predicted_BHI$bird_health_min <- predict_BHI$fit - predict_BHI$se.fit
+predicted_BHI$bird_health_max <- predict_BHI$fit + predict_BHI$se.fit
+
+predicted_BHI$fit
+```
+
+## Binding datasets
+```{r binding}
+dataset_new <- dataset %>% 
+  mutate(obs_vs_pred = "observed") %>% 
+  mutate(bird_health_min = NA) %>% 
+  mutate(bird_health_max = NA)
+predicted_BHI <- predicted_BHI %>% 
+  mutate(obs_vs_pred = "predicted")
+
+dataset_all <- rbind(dataset_new, predicted_BHI)
+```
+
+## Resulting plots
+```{r plots obs vs pred}
+shrubplot <- ggplot(dataset_all, aes(x = shrub_density, y = bird_health_index, color = obs_vs_pred)) +
+  geom_point(alpha = 0.6) +
+  geom_errorbar(aes(ymin=bird_health_min,ymax=bird_health_max,color=obs_vs_pred,width=0.2)) +
+  theme_classic() +
+  labs(title = "BHI in function of shrubs",
+       color = "Park")
+
+print(shrubplot)
+
+feederplot <- ggplot(dataset_all, aes(x = feeder_count, y = bird_health_index, color = obs_vs_pred)) +
+  geom_point(alpha = 0.6) +
+  geom_errorbar(aes(ymin=bird_health_min,ymax=bird_health_max,color=obs_vs_pred,width=0.2)) +
+  theme_classic() +
+  labs(title = "BHI in function of feeders",
+       color = "Park")
+
+print(feederplot)
+
+trashplot <- ggplot(dataset_all, aes(x = thrash_can_count, y = bird_health_index, color = obs_vs_pred)) +
+  geom_point(alpha = 0.6) +
+  geom_errorbar(aes(ymin=bird_health_min,ymax=bird_health_max,color=obs_vs_pred,width=0.2)) +
+  theme_classic() +
+  labs(title = "BHI in function of trash cans",
+       color = "Park")
+
+print(trashplot)
+
+rapplot <- ggplot(dataset_all, aes(x = raptor_presence, y = bird_health_index, color = obs_vs_pred)) +
+  geom_point(alpha = 0.6) +
+  geom_errorbar(aes(ymin=bird_health_min,ymax=bird_health_max,color=obs_vs_pred,width=0.2)) +
+  theme_classic() +
+  labs(title = "BHI in function of raptors",
+       color = "Park")
+
+print(rapplot)
+
+shrubplot+feederplot+rapplot+ plot_layout(widths = c(5,5,5), height = c(5,5,5))
+```
+
+
