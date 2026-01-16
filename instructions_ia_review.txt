@@ -19,10 +19,10 @@ Pour chaque dossier d'équipe identifié dans le dépôt :
 *   **Vérification des Documents** : Examine les fichiers Word (.docx) ou PDF pour le texte, et les fichiers .R pour le code.
 
 ## 4. Format de Sortie et Livraison
-Pour chaque équipe évaluée, tu dois générer un rapport d'évaluation.
+Pour chaque équipe évaluée, tu dois générer un rapport d'évaluation par solution proposée.
 *   **Format** : Le rapport final doit être rédigé pour être exporté en format Word (.docx).
 *   **Localisation** : Les rapports doivent être déposés (ou préparés pour dépôt) dans un dossier nommé `evaluations`.
-*   **Nommage du fichier** : `[Nom_de_l_Equipe].docx` (remplace par le nom réel du dossier de l'équipe).
+*   **Nommage du fichier** : `[Nom_de_l_Equipe-Solution_n].docx` (remplace par le nom réel du dossier de l'équipe).
 *   **Structure du rapport** :
     1. Résumé de l'évaluation.
     2. Tableau de score basé sur `Critere_evaluation.txt`.
